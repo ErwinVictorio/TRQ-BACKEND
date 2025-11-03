@@ -1,0 +1,276 @@
+import { ExecuteQry, ExecuteRecordSetQry } from "../config/connect.js"
+
+
+export async function GetUserTaskPending(username) {
+
+    try {
+        const query = `
+   SELECT  
+    d_task_id
+    ,c_is_parent
+    ,d_parent_task
+    ,s_reference_number
+    ,s_recipient
+    ,s_sender
+    ,dt_sent
+    ,s_subject
+    ,s_details
+    ,s_category_id
+    ,s_category_name
+    ,s_arr_option_choice_prompt
+    ,s_arr_option_choice
+    ,c_is_arr_option_choice_visible
+    ,s_positive_button_text
+    ,c_is_positive_button_visible
+    ,s_negative_button_text
+    ,c_is_negative_button_visible
+    ,s_neutral_button_text
+    ,s_is_neutral_button_visible
+    ,s_action_taken
+    ,dt_action_taken
+ ,s_username
+    ,c_open_custom_module
+        FROM mcjim_all_prog.dbo.Tasks tasks
+
+        left outer join mcjim_all_prog.dbo.user_accounts ua
+        on tasks.s_recipient = ua.s_employee_number
+
+        where ((s_recipient = '${username}') or (s_username = '${username}'))
+        and s_action_taken is null
+        order by d_task_id asc
+        `
+
+        const result = await ExecuteRecordSetQry(query);
+        return result.recordset;
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+}
+
+
+
+
+export async function CheckGetEmployeeNumberOfUsername(username) {
+
+    try {
+        const query = `
+        declare @s_username varchar(20) = UPPER('${username}')
+        declare @d_count int
+        select @d_count = count(*)
+        from mcjim_all_prog.dbo.user_accounts
+        where upper(s_username) = @s_username
+
+        if @d_count = 0
+        BEGIN
+            --not username, check if employee number is existing
+            SELECT @d_count = COUNT(*)
+            FROM mcjim_all_prog.dbo.Employee
+            WHERE AccessNumber = @s_username
+
+            IF @d_count = 0
+            BEGIN
+                SELECT 'X'
+            END
+            ELSE
+            BEGIN
+                SELECT @s_username
+            END
+        END
+        ELSE
+        BEGIN
+            --Get the linked Employee Number
+            SELECT CASE WHEN s_employee_number IS NULL THEN 'X' else s_employee_number end as s_employee_number
+            FROM mcjim_all_prog.dbo.user_accounts
+            WHERE UPPER(s_username) = @s_username
+        END
+    `;
+
+        const result = await ExecuteRecordSetQry(query);
+
+        return result.recordset
+    } catch (error) {
+        return { success: true, error: error.message }
+    }
+}
+
+
+
+export async function Create_New_Task(
+    d_parent_task,
+    d_originating_task,
+    ReferenceNumber,
+    s_recipient_employee_number,
+    s_sender_empoyee_number,
+    Subject,
+    Details,
+    CategoryID,
+    Category_Name,
+    ChoicePrompt,
+    Choices,
+    is_option_choice_visible,
+    PositiveButtonText,
+    is_positive_button_visible,
+    NegativeButtonText,
+    is_negative_button_visible,
+    NeutralButtonText,
+    is_neutral_button_visible,
+    open_custom_module
+) {
+    try {
+        const query = `
+            INSERT INTO mcjim_all_prog.dbo.Tasks(
+                c_is_parent,
+                d_parent_task,
+                d_originating_task,
+                s_reference_number,
+                s_recipient,
+                s_sender,
+                dt_sent,
+                s_subject,
+                s_details,
+                s_category_id,
+                s_category_name,
+                s_arr_option_choice_prompt,
+                s_arr_option_choice,
+                c_is_arr_option_choice_visible,
+                s_positive_button_text,
+                c_is_positive_button_visible,
+                s_negative_button_text,
+                c_is_negative_button_visible,
+                s_neutral_button_text,
+                s_is_neutral_button_visible,
+                c_open_custom_module
+            )
+            OUTPUT INSERTED.d_task_id AS d_task_id
+            VALUES(
+                'Y',
+                '${d_parent_task}',
+                '${d_originating_task}',
+                '${ReferenceNumber}',
+                '${s_recipient_employee_number}',
+                '${s_sender_empoyee_number}',
+                GETDATE(),
+                '${Subject}',
+                '${Details}',
+                '${CategoryID}',
+                '${Category_Name}',
+                '${ChoicePrompt}',
+                '${Choices}',
+                '${is_option_choice_visible}',
+                '${PositiveButtonText}',
+                '${is_positive_button_visible}',
+                '${NegativeButtonText}',
+                '${is_negative_button_visible}',
+                '${NeutralButtonText}',
+                '${is_neutral_button_visible}',
+                '${open_custom_module}'
+            )
+        `;
+
+        // 🔹 Use ExecuteRecordSetQry to return OUTPUT recordset
+        const result = await ExecuteRecordSetQry(query);
+        return result; // { recordset: [ { d_task_id: 45605 } ] }
+
+    } catch (error) {
+        console.error("❌ Error in Create_New_Task:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+
+
+//get all users with active subscription
+export async function GetUserSubs(desLocation) {
+    try {
+
+        const query = `
+        SELECT s_user_name from mcjim_all_prog.dbo.user_subscription
+        WHERE s_subscription_code = '${desLocation}'
+        and c_is_subscribed = 'Y'
+    `;
+
+        const result = await ExecuteRecordSetQry(query)
+        return result.recordset
+    } catch (error) {
+        console.log(error.message)
+        return { success: false, error: error.message }
+    }
+}
+
+
+export async function UpdateTask(d_parent_task, s_reference_number, task_id) {
+
+    try {
+        const query = `
+    UPDATE mcjim_all_prog.dbo.Tasks
+    SET d_parent_task = '${d_parent_task}'
+    , s_reference_number = '${s_reference_number}'
+    , d_originating_task = '${task_id}'
+    WHERE d_task_id = '${d_parent_task}'
+    `;
+
+        const result = await ExecuteQry(query);
+
+        return result.recordset
+
+
+    } catch (error) {
+
+    }
+
+}
+
+
+
+
+
+//  For displaying the list item na per box na scan
+
+export async function BRAP_Get_Items_For_ITR(TRQ_Number) {
+
+    try {
+        const query = `
+        select case when item.s_item_code is null
+        then s_item_code_box_code
+        else s_item_desc + ' (' + rtrim(s_color) + ' ' + rtrim(s_size) + ')'
+        end as s_display
+    , case when item.s_item_code is null
+        then s_item_code_box_code
+        else s_barcode_no
+        end as s_barcode_no
+    ,cast(d_qty as decimal(13,0)) d_qty
+        
+    from mcjim_all_prog.dbo.im_trq_detail_2 trqd
+
+    left outer join erpdata_new.dbo.item item
+    on trqd.s_item_code_box_code = item.s_item_code
+
+     where trqd.s_trq_number = '${TRQ_Number}'
+        `;
+
+        const result = await ExecuteRecordSetQry(query);
+        return result.recordset
+    } catch (error) {
+        return error.message
+    }
+
+}
+
+
+
+
+
+
+
+
+
+// for Get the Contact numbers
+// select FirstName + ' ' + left(LastName,1) + '.'
+// , ContactNumber
+
+// from [SentryDB].SentryLocal.dbo.Personnels pb
+
+// inner join mcjim_all_prog.dbo.HRIS_employees hris
+// on   hris.s_id collate SQL_Latin1_General_CP1_CS_AS  = pb.AccessNumber collate SQL_Latin1_General_CP1_CS_AS
+
+// where AccessNumber = '10029'
