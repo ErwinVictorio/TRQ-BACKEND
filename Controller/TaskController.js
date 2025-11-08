@@ -1,5 +1,5 @@
 
-import { BRAP_Get_Items_For_ITR, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, UpdateTask } from "../Model/Task.js";
+import { BRAP_Get_Items_For_ITR, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, UpdateTask } from "../Model/Task.js";
 
 
 export async function GetTaskcategoryName(Category) {
@@ -212,4 +212,36 @@ export async function Get_Items_For_ITR(req, res) {
             error: error.message
         })
     }
+}
+
+
+export async function ScanBoxes(req, res) {
+
+    const { boxNumber } = req.query;
+
+    try {
+        const box_number = await ScanBox(boxNumber);
+
+        if (box_number.length <= 0) {
+
+            return res.status(404).json({
+                success: false,
+                message: "Not Found"
+            })
+        }
+
+        return res.status(200).json({
+            success: true,
+            Box: box_number[0]
+        })
+
+
+
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            error: err.message
+        })
+    }
+
 }

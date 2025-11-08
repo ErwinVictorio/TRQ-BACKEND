@@ -51,3 +51,29 @@ export async function HasAccessLocation(username, locationCode) {
   }
 }
 
+
+//  load location into Consignment pag
+
+export async function LoadLocationGroup() {
+
+  try {
+    const query = `
+      select distinct s_entity_group  from (select  s_store_code
+    ,s_store_name
+    ,case when s_store_group is null then s_store_member else s_store_group end as s_entity_group
+    from mcjim_all_prog.dbo.v_stores
+    where s_store_member = 'WAREHOUSE'
+    OR s_store_group in ('AREA 1','AREA 2','AREA 3','AREA 4', 'MAIN', 'EVENTS')) aa
+  `
+
+   const result = await ExecuteRecordSetQry(query);
+
+   return result.recordset
+  } catch (error) {
+     return error.message
+  }
+
+
+
+}
+

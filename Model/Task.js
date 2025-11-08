@@ -222,10 +222,7 @@ export async function UpdateTask(d_parent_task, s_reference_number, task_id) {
 
 
 
-
-
 //  For displaying the list item na per box na scan
-
 export async function BRAP_Get_Items_For_ITR(TRQ_Number) {
 
     try {
@@ -255,6 +252,25 @@ export async function BRAP_Get_Items_For_ITR(TRQ_Number) {
     }
 
 }
+
+
+
+export async function ScanBox(boxNumber) {
+
+    try {
+        const query = `
+        SELECT d_qty,
+        s_item_code_box_code
+         FROM mcjim_all_prog.dbo.im_trq_detail_2 where s_item_code_box_code  = '${boxNumber}'
+        `
+        const result = await ExecuteRecordSetQry(query);
+
+        return result.recordset
+    } catch (error) {
+        return error.message
+    }
+}
+
 
 
 

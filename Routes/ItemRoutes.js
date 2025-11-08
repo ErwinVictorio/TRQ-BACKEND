@@ -3,9 +3,11 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import { CheckiIsBox_Exist, CheckiIsBox_Use, GenerateTrqNumber, Get_Reference_TD, Get_TDIN_number, GetItemByBoxNumber, InsertHeaderDetail, InsertTo_trq_2, InsertTo_Trq_detail, SearchItem, Store_to_trq_header, UpdateBox } from "../Controller/ItemController.js";
 import { StocNoValidatio } from "../Validation/iItemValidation.js";
-import { GetLocationGroupInfo, ValidateLocation } from "../Controller/sourceLocationGroup.js";
+import { GetLocationGroupInfo, LoadLocation, ValidateLocation } from "../Controller/sourceLocationGroup.js";
 import { GetLocationByUserName } from "../Controller/userController.js";
-import { CreateTask, Get_Items_For_ITR, GetUserPendingTask, GetUserSub } from "../Controller/TaskController.js";
+import { CreateTask, Get_Items_For_ITR, GetUserPendingTask, GetUserSub, ScanBoxes } from "../Controller/TaskController.js";
+import { Check_Item_SKU, testSKU } from "../Controller/consignmentController.js";
+import { BRAP_Get_Items_For_ITR } from "../Model/Task.js";
 
 const router = express.Router();
 
@@ -13,21 +15,21 @@ const router = express.Router();
 // router.use(cookieParser());
 
 // ✅ verifyToken middleware
-function verifyToken(req, res, next) {
-  const token = req.cookies.jwt;
+// function verifyToken(req, res, next) {
+//   const token = req.cookies.jwt;
 
-  if (!token) {
-    return res.status(401).json({ success: false, message: "No token found" });
-  }
+//   if (!token) {
+//     return res.status(401).json({ success: false, message: "No token found" });
+//   }
 
-  try {
-    const decoded = jwt.verify(token, "your_jwt_secret");
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(403).json({ success: false, message: "Invalid or expired token" });
-  }
-}
+//   try {
+//     const decoded = jwt.verify(token, "your_jwt_secret");
+//     req.user = decoded;
+//     next();
+//   } catch (err) {
+//     return res.status(403).json({ success: false, message: "Invalid or expired token" });
+//   }
+// }
 
 // ======================
 // 🔐 AUTH ROUTES
@@ -47,14 +49,14 @@ function verifyToken(req, res, next) {
 //   res.json(result);
 // });
 
-// ✅ Test if token works
-router.get("/me", verifyToken, (req, res) => {
-  res.json({
-    success: true,
-    message: "Authorized user!",
-    user: req.user,
-  });
-});
+//  Test if token works
+// router.get("/me", verifyToken, (req, res) => {
+//   res.json({
+//     success: true,
+//     message: "Authorized user!",
+//     user: req.user,
+//   });
+// });
 
 // ======================
 // 🔒 PROTECTED ROUTES
@@ -104,5 +106,17 @@ router.post('/get-user-subscription',GetUserSub);
 router.post('/create-task',CreateTask);
 
 router.post('/get_Items_for_itr',Get_Items_For_ITR)
+router.post('/get-item-for-task-box-for-scanning',Get_Items_For_ITR);
+
+
+//  for scanning the Box Number
+router.get('/scan-box',ScanBoxes);
+
+
+
+
+//  For consignment
+router.get('/get-location-group',LoadLocation);
+router.post('/get-sku-result',Check_Item_SKU)
 
 export const itemsRoutes = router;
