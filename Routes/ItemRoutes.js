@@ -5,7 +5,7 @@ import { CheckiIsBox_Exist, CheckiIsBox_Use, GenerateTrqNumber, Get_Reference_TD
 import { StocNoValidatio } from "../Validation/iItemValidation.js";
 import { GetLocationGroupInfo, LoadLocation, ValidateLocation } from "../Controller/sourceLocationGroup.js";
 import { GetLocationByUserName } from "../Controller/userController.js";
-import { CreateTask, Get_Items_For_ITR, GetUserPendingTask, GetUserSub, ScanBoxes } from "../Controller/TaskController.js";
+import { CreateTask, Get_Items_For_ITR, Get_TDIN_number_By_Trq, GetNameRequestor, GetUserPendingTask, GetUserSub, Save_Internal_Transfer_Receiving, ScanBoxes } from "../Controller/TaskController.js";
 import { Check_Item_SKU, testSKU } from "../Controller/consignmentController.js";
 import { BRAP_Get_Items_For_ITR } from "../Model/Task.js";
 
@@ -108,6 +108,12 @@ router.post('/create-task',CreateTask);
 router.post('/get_Items_for_itr',Get_Items_For_ITR)
 
 router.post('/get-item-for-task-box-for-scanning',Get_Items_For_ITR);
+
+router.get('/get-tdin-by-trq-number',Get_TDIN_number_By_Trq);
+
+router.post('/save-internal-transfer',Save_Internal_Transfer_Receiving);
+
+router.get('/get-requestor-name',GetNameRequestor);
 
 
 //  for scanning the Box Number

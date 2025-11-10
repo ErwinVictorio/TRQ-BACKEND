@@ -1,3 +1,4 @@
+
 import { ExecuteQry, ExecuteRecordSetQry } from "../config/connect.js"
 
 
@@ -211,6 +212,7 @@ export async function UpdateTask(d_parent_task, s_reference_number, task_id) {
 
         const result = await ExecuteQry(query);
 
+
         return result.recordset
     } catch (error) {
         return error.message
@@ -270,21 +272,125 @@ export async function ScanBox(boxNumber) {
 
 
 
+//---------------------------------------------------------------------------------------------------------------------
+// Firs Get the TDIN by using TRQ number
+export async function BRAP_ITR_Get_TRQ_TD_NUmber(trq_number) {
+
+    try {
+        const qry = `
+        select top 1 s_to_number  from erpdata_new.dbo.to_source_detail
+        where s_ref_doc_number = '${trq_number}'
+        `
+        const result = await ExecuteRecordSetQry(qry);
+
+        return result.recordset
+
+    } catch (error) {
+        return error.message
+    }
+}
 
 
 
 
-//  to create Scanned  Box Item
 
-export async function BRAP_Save_Internal_Transfer_Receiving(trq_Number, items, username) {
+//  After after getting the TDIN the run this 
 
-    //approve the transfer delevery first
+export async function BRAP_Save_Internal_Transfer_Receiving(TDIN_number, Items, username) {
+    const dateNow = new Date().toISOString(); // format like C#
 
-    
+    try {
+        // 1️ Approve the transfer delivery
+        const qry1 = `
+      EXEC mcjim_all_prog.dbo.sp_picking_approve_transfer_delivery 
+      '${TDIN_number}', 
+      '${username.toUpperCase()}'
+    `;
+        await ExecuteQry(qry1);
 
+        // 2️ Create open TR
+        const qry2 = `
+      EXEC mcjim_all_prog.dbo.sp_create_manual_transfer_receiving 
+      '${TDIN_number}', '${username.toUpperCase()}', '${dateNow}', '${Items}'
+    `;
+        await ExecuteQry(qry2);
+
+        // 3️Get the TR number
+        const query0 = `
+      SELECT s_tr_number 
+      FROM erpdata_new.dbo.tr_header
+      WHERE s_ref_doc_number = '${TDIN_number}'
+    `;
+        const result = await ExecuteRecordSetQry(query0);
+
+        // Return single TR number if exists, else 'X'
+        const s_ref_tr_number =
+            result.recordset.length > 0 ? result.recordset[0].s_tr_number : "X";
+
+        return {
+            ResultCode: "OK",
+            ResultDescription: "Operation has been completed.",
+            ResultDescription2: s_ref_tr_number,
+        };
+    } catch (error) {
+        return {
+            ResultCode: "ERROR",
+            ResultDescription: error.message,
+        };
+    }
+}
+
+
+//  the after this if no error and nakuha nanatin yong trq number 
+//  gagamtin natin yong trq number para kunin yong name ng requestor
+
+export async function BRAP_Get_TRQ_requestor(trq_number) {
+
+    try {
+
+        const qry = `
+            select top 1 s_requested_by from erpdata_new.dbo.im_trq_header
+            where s_trq_number  = '${trq_number}'
+            `
+        const result = await ExecuteRecordSetQry(qry);
+
+        return result.recordset[0]
+    } catch (error) {
+        return error.message
+    }
 
 }
 
+
+//  Updating the Task
+
+export async function Update_User_Task(TaskID, ActionButtonResponse, OptionChoice, Username) {
+
+    try {
+
+        if (ActionButtonResponse === 'FINISHED') {
+            const qry2 = `
+             UPDATE {dashboard_database}.dbo.Tasks
+                SET s_action_taken = '${ActionButtonResponse}'
+                , s_option_choice_selected = '${OptionChoice}'
+                , dt_action_taken = GETDATE()
+                , s_action_taken_by = '${Username}'
+
+                WHERE d_task_id = ${TaskID}
+            `
+
+            await ExecuteQry(qry2)
+
+            return `Task ${TaskID} has been marked as finished`
+        }
+
+    } catch (error) {
+        return error.message
+    }
+
+
+
+}
 
 
 

@@ -1,5 +1,5 @@
 
-import { BRAP_Get_Items_For_ITR, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, UpdateTask } from "../Model/Task.js";
+import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, UpdateTask } from "../Model/Task.js";
 
 
 export async function GetTaskcategoryName(Category) {
@@ -245,3 +245,79 @@ export async function ScanBoxes(req, res) {
     }
 
 }
+
+
+
+//  Get the TDINnumber using TRQ NUMBER
+export async function Get_TDIN_number_By_Trq(req, res) {
+
+    const { trq_number } = req.query;
+
+
+    try {
+
+        const result = await BRAP_ITR_Get_TRQ_TD_NUmber(trq_number);
+
+        return res.status(200).json({
+            success: true,
+            tdin: result[0]
+        })
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: err.message
+        })
+    }
+
+}
+
+//  After after getting the TDIN the run this 
+export async function Save_Internal_Transfer_Receiving(req, res) {
+    const { TDN_NUMBER, items, username } = req.body;
+
+    try {
+        const result = await BRAP_Save_Internal_Transfer_Receiving(
+            TDN_NUMBER,
+            items,
+            username
+        );
+
+        return res.status(200).json({
+            success: true,
+            response: result,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+        });
+    }
+}
+
+//  get the name of requestor
+
+export async function GetNameRequestor(req, res) {
+
+    const { trq_number } = req.query;
+
+    try {
+
+        const result = await BRAP_Get_TRQ_requestor(trq_number);
+
+        return res.status(200).json({
+            success: true,
+            name: result
+        })
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: err.message
+        })
+
+    }
+
+}
+
+
