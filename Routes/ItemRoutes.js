@@ -106,13 +106,12 @@ router.post('/get-user-subscription',GetUserSub);
 router.post('/create-task',CreateTask);
 
 router.post('/get_Items_for_itr',Get_Items_For_ITR)
+
 router.post('/get-item-for-task-box-for-scanning',Get_Items_For_ITR);
 
 
 //  for scanning the Box Number
 router.get('/scan-box',ScanBoxes);
-
-
 
 
 //  For consignment

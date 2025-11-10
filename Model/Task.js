@@ -202,22 +202,19 @@ export async function UpdateTask(d_parent_task, s_reference_number, task_id) {
 
     try {
         const query = `
-    UPDATE mcjim_all_prog.dbo.Tasks
-    SET d_parent_task = '${d_parent_task}'
-    , s_reference_number = '${s_reference_number}'
-    , d_originating_task = '${task_id}'
-    WHERE d_task_id = '${d_parent_task}'
-    `;
+            UPDATE mcjim_all_prog.dbo.Tasks
+            SET d_parent_task = '${d_parent_task}'
+            , s_reference_number = '${s_reference_number}'
+            , d_originating_task = '${task_id}'
+            WHERE d_task_id = '${d_parent_task}'
+            `;
 
         const result = await ExecuteQry(query);
 
         return result.recordset
-
-
     } catch (error) {
-
+        return error.message
     }
-
 }
 
 
@@ -227,22 +224,22 @@ export async function BRAP_Get_Items_For_ITR(TRQ_Number) {
 
     try {
         const query = `
-        select case when item.s_item_code is null
-        then s_item_code_box_code
-        else s_item_desc + ' (' + rtrim(s_color) + ' ' + rtrim(s_size) + ')'
-        end as s_display
-    , case when item.s_item_code is null
-        then s_item_code_box_code
-        else s_barcode_no
-        end as s_barcode_no
-    ,cast(d_qty as decimal(13,0)) d_qty
-        
-    from mcjim_all_prog.dbo.im_trq_detail_2 trqd
+            select case when item.s_item_code is null
+            then s_item_code_box_code
+            else s_item_desc + ' (' + rtrim(s_color) + ' ' + rtrim(s_size) + ')'
+            end as s_display
+        , case when item.s_item_code is null
+            then s_item_code_box_code
+            else s_barcode_no
+            end as s_barcode_no
+        ,cast(d_qty as decimal(13,0)) d_qty
+            
+        from mcjim_all_prog.dbo.im_trq_detail_2 trqd
 
-    left outer join erpdata_new.dbo.item item
-    on trqd.s_item_code_box_code = item.s_item_code
+        left outer join erpdata_new.dbo.item item
+        on trqd.s_item_code_box_code = item.s_item_code
 
-     where trqd.s_trq_number = '${TRQ_Number}'
+        where trqd.s_trq_number = '${TRQ_Number}'
         `;
 
         const result = await ExecuteRecordSetQry(query);
@@ -270,6 +267,24 @@ export async function ScanBox(boxNumber) {
         return error.message
     }
 }
+
+
+
+
+
+
+
+//  to create Scanned  Box Item
+
+export async function BRAP_Save_Internal_Transfer_Receiving(trq_Number, items, username) {
+
+    //approve the transfer delevery first
+
+    
+
+
+}
+
 
 
 
