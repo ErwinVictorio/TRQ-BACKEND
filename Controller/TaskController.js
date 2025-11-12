@@ -1,6 +1,6 @@
 
 import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, Update_User_Task, UpdateTask } from "../Model/Task.js";
-
+import { io } from "../index.js";
 
 export async function GetTaskcategoryName(Category) {
     const names = {
@@ -197,6 +197,14 @@ export async function CreateTask(req, res) {
                 }
             }
         }
+
+        //  Manage Na Nofifictaion when the Task is Created
+      // Emit WebSocket event to all connected users (later you can limit to the recipient only)
+        io.emit("taskCreated", {
+            message: `🆕 New task created by ${Username}`,
+            createdBy: Username,
+            reference: ReferenceNumber,
+        });
 
         return res.status(200).json({
             success: true,
