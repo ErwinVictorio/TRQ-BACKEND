@@ -1,5 +1,5 @@
 
-import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, UpdateTask } from "../Model/Task.js";
+import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, Update_User_Task, UpdateTask } from "../Model/Task.js";
 
 
 export async function GetTaskcategoryName(Category) {
@@ -101,7 +101,7 @@ export async function CreateTask(req, res) {
             NegativeButtonText,
             NeutralButtonText,
             Username,
-            OpenCustomModule
+            OpenCustomModule,
         } = req.body;
 
         // 1️ Get sender employee number
@@ -112,7 +112,6 @@ export async function CreateTask(req, res) {
                 message: `Invalid employee number for ${Username}`
             });
         }
-
         const s_sender_empoyee_number = empResult[0].s_employee_number;
         const categoryName = await GetTaskcategoryName(CategoryID);
 
@@ -122,27 +121,18 @@ export async function CreateTask(req, res) {
         const is_neutral_button_visible = NeutralButtonText?.length ? "Y" : "N";
         const open_custom_module = OpenCustomModule?.length ? "Y" : "N";
 
-        const recList = Recipients.split(',').map(r => r.trim()).filter(r => r);
+        // 2️ Prepare recipients
+        const recList = Recipients?.split(',').map(r => r.trim()).filter(r => r) || [];
 
-        let parentTaskId = 0;
+        console.log(recList, 'recList')
 
-        // 2️ Loop recipients
-        for (let i = 0; i < recList.length; i++) {
-            const recipientName = recList[i];
-            const empCheck = await CheckGetEmployeeNumberOfUsername(recipientName);
-
-            if (!empCheck?.length || empCheck[0].s_employee_number === "X") {
-                console.warn(`⚠️ Skipped ${recipientName}`);
-                continue;
-            }
-
-            const s_recipient_employee_number = empCheck[0].s_employee_number;
-
+        // If no recipients, create a task with empty recipient
+        if (recList.length === 0) {
             const insertResult = await Create_New_Task(
-                parentTaskId, // 0 for first, parent's ID for next
-                parentTaskId,
+                0, // parentTaskId
+                0, // originatingTask
                 ReferenceNumber,
-                s_recipient_employee_number,
+                "", // s_recipient_employee_number is empty
                 s_sender_empoyee_number,
                 Subject,
                 Details,
@@ -161,13 +151,52 @@ export async function CreateTask(req, res) {
             );
 
             const insertedTaskId = insertResult.recordset?.[0]?.d_task_id || 0;
-
             if (insertedTaskId > 0) {
                 await UpdateTask(insertedTaskId, ReferenceNumber, insertedTaskId, insertedTaskId);
             }
+        } else {
+            // Loop through recipients
+            let parentTaskId = 0;
+            for (let i = 0; i < recList.length; i++) {
+                const recipientName = recList[i];
+                const empCheck = await CheckGetEmployeeNumberOfUsername(recipientName);
+
+                if (!empCheck?.length || empCheck[0].s_employee_number === "X") {
+                    console.warn(`⚠️ Skipped ${recipientName}`);
+                    continue;
+                }
+
+                const s_recipient_employee_number = empCheck[0].s_employee_number;
+
+                const insertResult = await Create_New_Task(
+                    parentTaskId,
+                    parentTaskId,
+                    ReferenceNumber,
+                    s_recipient_employee_number,
+                    s_sender_empoyee_number,
+                    Subject,
+                    Details,
+                    CategoryID,
+                    categoryName,
+                    ChoicePrompt,
+                    Choices,
+                    is_option_choice_visible,
+                    PositiveButtonText,
+                    is_positive_button_visible,
+                    NegativeButtonText,
+                    is_negative_button_visible,
+                    NeutralButtonText,
+                    is_neutral_button_visible,
+                    open_custom_module
+                );
+
+                const insertedTaskId = insertResult.recordset?.[0]?.d_task_id || 0;
+                if (insertedTaskId > 0) {
+                    await UpdateTask(insertedTaskId, ReferenceNumber, insertedTaskId, insertedTaskId);
+                    if (i === 0) parentTaskId = insertedTaskId; // first task becomes parent
+                }
+            }
         }
-
-
 
         return res.status(200).json({
             success: true,
@@ -183,6 +212,131 @@ export async function CreateTask(req, res) {
         });
     }
 }
+
+
+
+
+//  Seconnd controller to create Task
+
+// Create Task for a Single Recipient Only
+export async function CreateTaskSingleRecipient(req, res) {
+    try {
+        const {
+            ReferenceNumber,
+            CategoryID,
+            Subject,
+            Details,
+            Recipient, // only one recipient username or employee number
+            ChoicePrompt,
+            Choices,
+            PositiveButtonText,
+            NegativeButtonText,
+            NeutralButtonText,
+            Username,
+            OpenCustomModule,
+        } = req.body;
+
+        // 1️⃣ Get sender employee number
+        const empResult = await CheckGetEmployeeNumberOfUsername(Username);
+        if (!empResult?.length || empResult[0].s_employee_number === 'X') {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid sender employee number for ${Username}`,
+            });
+        }
+        const s_sender_empoyee_number = empResult[0].s_employee_number;
+        const categoryName = await GetTaskcategoryName(CategoryID);
+
+        const is_option_choice_visible = ChoicePrompt?.length ? "Y" : "N";
+        const is_positive_button_visible = PositiveButtonText?.length ? "Y" : "N";
+        const is_negative_button_visible = NegativeButtonText?.length ? "Y" : "N";
+        const is_neutral_button_visible = NeutralButtonText?.length ? "Y" : "N";
+        const open_custom_module = OpenCustomModule?.length ? "Y" : "N";
+
+        // 2️⃣ Validate single recipient
+        if (!Recipient || !Recipient.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Recipient is required for this request",
+            });
+        }
+
+        // Check if recipient is valid
+        const empCheck = await CheckGetEmployeeNumberOfUsername(Recipient);
+        if (!empCheck?.length || empCheck[0].s_employee_number === "X") {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid recipient employee number for ${Recipient}`,
+            });
+        }
+
+        const s_recipient_employee_number = empCheck[0].s_employee_number;
+
+        // 3️⃣ Create the task
+        const insertResult = await Create_New_Task(
+            0, // parent task
+            0, // originating task
+            ReferenceNumber,
+            s_recipient_employee_number,
+            s_sender_empoyee_number,
+            Subject,
+            Details,
+            CategoryID,
+            categoryName,
+            ChoicePrompt,
+            Choices,
+            is_option_choice_visible,
+            PositiveButtonText,
+            is_positive_button_visible,
+            NegativeButtonText,
+            is_negative_button_visible,
+            NeutralButtonText,
+            is_neutral_button_visible,
+            open_custom_module
+        );
+
+        const insertedTaskId = insertResult.recordset?.[0]?.d_task_id || 0;
+        if (insertedTaskId > 0) {
+            await UpdateTask(insertedTaskId, ReferenceNumber, insertedTaskId, insertedTaskId);
+        }
+
+        // 4️⃣ Success
+        return res.status(200).json({
+            success: true,
+            ResultDescription: `Task for ${Recipient} created successfully`,
+            taskId: insertedTaskId,
+        });
+
+    } catch (error) {
+        console.error("❌ Error in CreateTaskSingleRecipient:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -307,7 +461,7 @@ export async function GetNameRequestor(req, res) {
 
         return res.status(200).json({
             success: true,
-            name: result
+            name: result.s_requested_by
         })
 
     } catch (error) {
@@ -321,3 +475,25 @@ export async function GetNameRequestor(req, res) {
 }
 
 
+
+export async function UpdateTaskForAcknowledge(req, res) {
+
+    const { TaskId, s_action_taken_by } = req.body;
+
+    try {
+        const result = await Update_User_Task(TaskId, s_action_taken_by);
+
+        if (result) {
+            return res.status(200).json({
+                success: true,
+                message: result
+            })
+        }
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        })
+    }
+
+}

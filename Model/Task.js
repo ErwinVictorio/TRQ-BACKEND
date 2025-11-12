@@ -170,6 +170,7 @@ export async function Create_New_Task(
 
         // 🔹 Use ExecuteRecordSetQry to return OUTPUT recordset
         const result = await ExecuteRecordSetQry(query);
+        console.log(query)
         return result; // { recordset: [ { d_task_id: 45605 } ] }
 
     } catch (error) {
@@ -334,7 +335,7 @@ export async function BRAP_Save_Internal_Transfer_Receiving(TDIN_number, Items, 
         };
     } catch (error) {
         return {
-            ResultCode: "ERROR",
+            ResultCode: 'X',
             ResultDescription: error.message,
         };
     }
@@ -364,25 +365,23 @@ export async function BRAP_Get_TRQ_requestor(trq_number) {
 
 //  Updating the Task
 
-export async function Update_User_Task(TaskID, ActionButtonResponse, OptionChoice, Username) {
+export async function Update_User_Task(TaskID, s_action_taken_by) {
 
     try {
 
-        if (ActionButtonResponse === 'FINISHED') {
-            const qry2 = `
-             UPDATE {dashboard_database}.dbo.Tasks
-                SET s_action_taken = '${ActionButtonResponse}'
-                , s_option_choice_selected = '${OptionChoice}'
+        const qry2 = `
+             UPDATE mcjim_all_prog.dbo.Tasks
+                SET s_action_taken = 'FINISHED' -- ginawa kung Default lang muna to
+                , s_option_choice_selected =  null
                 , dt_action_taken = GETDATE()
-                , s_action_taken_by = '${Username}'
+                , s_action_taken_by = '${s_action_taken_by}'    
 
                 WHERE d_task_id = ${TaskID}
             `
 
-            await ExecuteQry(qry2)
+        await ExecuteQry(qry2)
 
-            return `Task ${TaskID} has been marked as finished`
-        }
+        return `Task ${TaskID} has been marked as finished`
 
     } catch (error) {
         return error.message
