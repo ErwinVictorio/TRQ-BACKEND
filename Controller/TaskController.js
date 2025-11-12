@@ -1,5 +1,5 @@
 
-import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, Update_User_Task, UpdateTask } from "../Model/Task.js";
+import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, TaskCountBy, Update_User_Task, UpdateTask } from "../Model/Task.js";
 import { io } from "../index.js";
 
 export async function GetTaskcategoryName(Category) {
@@ -23,6 +23,30 @@ const UserSubscription = {
     INTERNAL_TRANSFER_RECEIVING_BR: "INTERNAL_TRANSFER_RECEIVING_BR",
     INTERNAL_TRANSFER_RECEIVING_BR2: "INTERNAL_TRANSFER_RECEIVING_BR2",
     SYSTEM_ADMINISTRATOR: "SYSTEM_ADMINISTRATOR"
+}
+
+
+
+//  For Counting the Task By UserName
+
+export async function TaskCount(req, res) {
+
+    const { username } = req.query;
+
+    try {
+        const result = await TaskCountBy(username);
+        if (result) {
+            return res.status(200).json({
+                success: true,
+                count: result
+            })
+        }
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        })
+    }
 }
 
 
@@ -199,7 +223,7 @@ export async function CreateTask(req, res) {
         }
 
         //  Manage Na Nofifictaion when the Task is Created
-      // Emit WebSocket event to all connected users (later you can limit to the recipient only)
+        // Emit WebSocket event to all connected users (later you can limit to the recipient only)
         io.emit("taskCreated", {
             message: `🆕 New task created by ${Username}`,
             createdBy: Username,

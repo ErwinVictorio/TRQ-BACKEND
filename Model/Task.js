@@ -49,6 +49,33 @@ export async function GetUserTaskPending(username) {
 }
 
 
+export async function TaskCountBy(username) {
+
+    try {
+        const query = `
+            SELECT  
+                    COUNT(*) AS countedTask
+                    FROM mcjim_all_prog.dbo.Tasks tasks
+
+                    left outer join mcjim_all_prog.dbo.user_accounts ua
+                    on tasks.s_recipient = ua.s_employee_number
+
+                    where ((s_recipient = '${username}') or (s_username = '${username}'))
+                    and s_action_taken is null
+                `;
+        const result = ExecuteRecordSetQry(query);
+
+        return result.recordset
+    } catch (error) {
+      return error.message
+    }
+
+
+
+
+}
+
+
 
 
 export async function CheckGetEmployeeNumberOfUsername(username) {
