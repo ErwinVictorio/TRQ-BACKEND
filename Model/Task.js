@@ -1,8 +1,9 @@
 
 import { ExecuteQry, ExecuteRecordSetQry } from "../config/connect.js"
+import { GetTaskcategoryName } from "../Controller/TaskController.js";
 
 
-export async function GetUserTaskPending(username) {
+export async function GetUserTaskPending(username, tasCategory) {
 
     try {
         const query = `
@@ -38,7 +39,8 @@ export async function GetUserTaskPending(username) {
 
         where ((s_recipient = '${username}') or (s_username = '${username}'))
         and s_action_taken is null
-        order by d_task_id asc
+         and s_positive_button_text = '${tasCategory}'
+        order by d_task_id DESC
         `
 
         const result = await ExecuteRecordSetQry(query);
@@ -63,11 +65,11 @@ export async function TaskCountBy(username) {
                     where ((s_recipient = '${username}') or (s_username = '${username}'))
                     and s_action_taken is null
                 `;
-        const result = ExecuteRecordSetQry(query);
+        const result = await ExecuteRecordSetQry(query);
 
         return result.recordset
     } catch (error) {
-      return error.message
+        return error.message
     }
 
 
@@ -390,33 +392,199 @@ export async function BRAP_Get_TRQ_requestor(trq_number) {
 }
 
 
-//  Updating the Task
+// ------------------------------------------------------ FOR UPDATING TASK -------------------------------------------------------------------------
 
-export async function Update_User_Task(TaskID, s_action_taken_by) {
+//  STEP 1
+//  GET THE TASK CATGORY BY ID
+export async function GetCategoryIdByTaskId(TaskId) {
 
     try {
+        const qry = `
+          SELECT s_category_id
+        , s_category_name
+        , s_reference_number
+         FROM mcjim_all_prog.dbo.Tasks
+         WHERE d_task_id = ${TaskId}
+      `;
 
-        const qry2 = `
-             UPDATE mcjim_all_prog.dbo.Tasks
-                SET s_action_taken = 'FINISHED' -- ginawa kung Default lang muna to
-                , s_option_choice_selected =  null
-                , dt_action_taken = GETDATE()
-                , s_action_taken_by = '${s_action_taken_by}'    
+        const result = await ExecuteRecordSetQry(qry)
 
-                WHERE d_task_id = ${TaskID}
-            `
-
-        await ExecuteQry(qry2)
-
-        return `Task ${TaskID} has been marked as finished`
-
+        return result.recordset
     } catch (error) {
         return error.message
     }
 
+}
+
+
+// STEP 2
+//get the supplier code
+export async function GetSupplierCode(OptionChoice) {
+
+    try {
+        const query = `
+         select s_entity_code from erpdata_new.dbo.co_entity
+          WHERE s_entity_name = '${OptionChoice}'
+        `;
+
+        const result = await ExecuteRecordSetQry(query);
+        return result.recordset
+    } catch (error) {
+        return error.message
+    }
+}
+
+
+// SETEP 3
+//check if the account is still untouched
+export async function CheckIfAccountUntouch(s_reference) {
+
+    try {
+        const query = `
+         select s_entity_code from {erp_database}.dbo.co_entity
+          WHERE s_entity_name = '${s_reference}'
+        `;
+
+        const result = await ExecuteRecordSetQry(query);
+        return result.recordset
+    } catch (error) {
+        return error.message
+    }
+}
+
+
+export async function UpdateIfFinish(TaskID, s_action_taken_by, ActionTaken) {
+
+    try {
+
+        const qry2 = `
+                UPDATE mcjim_all_prog.dbo.Tasks
+                    SET s_action_taken = '${ActionTaken}'
+                    , s_option_choice_selected =  null
+                    , dt_action_taken = GETDATE()
+                    , s_action_taken_by = '${s_action_taken_by}'    
+                 WHERE d_task_id = ${TaskID}
+               `;
+
+        await ExecuteQry(qry2)
+        return `Task ${TaskID} has been marked as finished`
+    } catch (error) {
+        return error.message
+    }
+}
+
+
+//  Get The  Supplier code
+async function GeSupplierCode(OptionChoice) {
+
+    const query = `
+      select s_entity_code from {erp_database}.dbo.co_entity
+      WHERE s_entity_name = '${OptionChoice}'
+    `;
+
+    const result = await ExecuteRecordSetQry(query);
+
+    return result.recordset
+}
+
+
+//  Check if the TR is already Finalized
+
+async function CheckIfFinalized(s_reference) {
+
+    try {
+        const qry = `
+           select c_finalized from erpdata_new.dbo.tr_header
+            where s_tr_number = '${s_reference}'
+            `
+
+        const result = await ExecuteRecordSetQry(qry);
+
+        return result.recordset
+    } catch (error) {
+        return error.message
+    }
+
+}
+
+
+
+export async function Update_User_Task(TaskId, ActionButtonResponse, OptionChoice, Username) {
+
+
+    try {
+        //  Get The category Id 
+        const CategoryId = await GetCategoryIdByTaskId(TaskId)
+
+
+        if (CategoryId.length === 0) {
+            return "No Result"
+        }
+
+        const { s_category_id, s_category_name, s_reference_number } = CategoryId[0]
+
+      
+        
+
+        //  Validate the Actions 
+        const ValidatedAction = ActionButtonResponse === 'POSITIVE' || ActionButtonResponse === 'NEGATIVE' || ActionButtonResponse === 'NEUTRAL' || ActionButtonResponse === 'FINISHED'
+
+
+        if (!ValidatedAction) {
+            // if (ActionButtonResponse == 'FINISHED') {
+            //     //  Update the Task if The Action Is Equal to Finish
+            //     const UpdateTask = await UpdateIfFinish(TaskId, Username)
+            //     return UpdateTask
+            // }
+
+
+             console.log(s_category_id)
+
+            //  check if the task category is INTERNAL_TRANSFER_RECEIVING_ACKNOWLEDGE
+            if (s_category_id === 'INTERNAL_TRANSFER_RECEIVING_ACKNOWLEDGE') {
+
+                const c_finalized =  await CheckIfFinalized(s_reference_number)
+
+                console.log(c_finalized,'dfdfdfd')
+
+                if (c_finalized === 'Y') {
+                    return `${s_reference_number} is alredy been acted on.`
+                }
+
+            } else {
+
+
+            }
+
+
+            if (ActionButtonResponse == 'POSITIVE') {
+
+                const qry = `exec {dashboard_database}.dbo.sp_confirm_transfer_receiving '${s_reference_number}'`
+
+
+
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+    } catch (error) {
+        console.log(error.message)
+    }
 
 
 }
+
+
+
+
 
 
 

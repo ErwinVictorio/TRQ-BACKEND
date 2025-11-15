@@ -1,5 +1,5 @@
 
-import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetUserSubs, GetUserTaskPending, ScanBox, TaskCountBy, Update_User_Task, UpdateTask } from "../Model/Task.js";
+import { BRAP_Get_Items_For_ITR, BRAP_Get_TRQ_requestor, BRAP_ITR_Get_TRQ_TD_NUmber, BRAP_Save_Internal_Transfer_Receiving, CheckGetEmployeeNumberOfUsername, Create_New_Task, GetCategoryIdByTaskId, GetUserSubs, GetUserTaskPending, ScanBox, TaskCountBy, Update_User_Task, UpdateTask } from "../Model/Task.js";
 import { io } from "../index.js";
 
 export async function GetTaskcategoryName(Category) {
@@ -89,12 +89,12 @@ export async function GetUserSub(req, res) {
 //  Get user Task Pending
 export async function GetUserPendingTask(req, res) {
 
-    const { username } = req.body;
+    const { username, tasCategory } = req.body;
 
     try {
         if (username.trim() !== "") {
 
-            const result = await GetUserTaskPending(username);
+            const result = await GetUserTaskPending(username, tasCategory);
 
             return res.status(200).json({
                 success: true,
@@ -225,7 +225,7 @@ export async function CreateTask(req, res) {
         //  Manage Na Nofifictaion when the Task is Created
         // Emit WebSocket event to all connected users (later you can limit to the recipient only)
         io.emit("taskCreated", {
-            message: `🆕 New task created by ${Username}`,
+            message: `New task created by ${Username}`,
             createdBy: Username,
             reference: ReferenceNumber,
         });
@@ -332,12 +332,22 @@ export async function CreateTaskSingleRecipient(req, res) {
             await UpdateTask(insertedTaskId, ReferenceNumber, insertedTaskId, insertedTaskId);
         }
 
-        // 4️⃣ Success
+        io.emit("taskCreated", {
+            message: `New task created by ${Username}`,
+            createdBy: Username,
+            reference: ReferenceNumber,
+        });
+
+        // 4️ Success
         return res.status(200).json({
             success: true,
             ResultDescription: `Task for ${Recipient} created successfully`,
             taskId: insertedTaskId,
         });
+
+
+
+
 
     } catch (error) {
         console.error("❌ Error in CreateTaskSingleRecipient:", error);
@@ -529,3 +539,33 @@ export async function UpdateTaskForAcknowledge(req, res) {
     }
 
 }
+
+
+
+// ---------------------UPDATE THE TASK -----------------------------------------------------
+
+
+export async function UpdateTaskUser(req, res) {
+
+    const { TaskID, ActionButtonResponse, OptionChoice, Username } = req.body
+
+
+
+    try {
+    // GET CATEGORY Id
+    const getTaskCategory = await Update_User_Task(TaskID);
+
+     return res.status(200).json({
+          success: true,
+          data: getTaskCategory
+     })
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: error.message 
+        })
+    }
+
+}
+
